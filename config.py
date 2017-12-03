@@ -11,14 +11,15 @@ except:
     pass
 
 ############### benchmark config ####################
+OTB_DIR = osp.dirname(__file__)
 
-WORKDIR = osp.dirname(__file__)
+WORKDIR = os.path.abspath('.')
 
-SEQ_SRC = osp.join(WORKDIR, 'data/')
+SEQ_SRC = osp.join(OTB_DIR, 'data/')
 
-TRACKER_SRC = osp.join(WORKDIR, 'trackers/')
+TRACKER_SRC = osp.join(OTB_DIR, 'trackers/')
 
-RESULT_SRC = osp.join(WORKDIR, 'results/{0}/') # '{0} : OPE, SRE, TRE'
+RESULT_SRC = osp.join(OTB_DIR, 'results/{0}/') # '{0} : OPE, SRE, TRE'
 
 SETUP_SEQ = True
 
