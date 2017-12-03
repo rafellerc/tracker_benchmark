@@ -2,6 +2,7 @@
 import json
 import sys
 import os
+import os.path as osp
 
 try:
     import matlab
@@ -11,13 +12,13 @@ except:
 
 ############### benchmark config ####################
 
-WORKDIR = os.path.abspath('.')
+WORKDIR = osp.dirname(__file__)
 
-SEQ_SRC = './data/'
+SEQ_SRC = osp.join(WORKDIR, 'data/')
 
-TRACKER_SRC = './trackers/'
+TRACKER_SRC = osp.join(WORKDIR, 'trackers/')
 
-RESULT_SRC = './results/{0}/' # '{0} : OPE, SRE, TRE'
+RESULT_SRC = osp.join(WORKDIR, 'results/{0}/') # '{0} : OPE, SRE, TRE'
 
 SETUP_SEQ = True
 
