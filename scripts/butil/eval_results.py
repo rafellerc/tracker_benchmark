@@ -16,22 +16,19 @@ def calc_result(tracker, seqs, results, evalType):
 
         if evalType == 'SRE':
             idxNum = len(subResults)
-            anno = seq.gtRect
         elif evalType == 'TRE':
             idxNum = len(subResults)
         elif evalType == 'OPE':
             idxNum = 1
-            anno = seq.gtRect
 
         for j in range(idxNum):
             result = subResults[j]
-            if evalType == 'TRE':
-                if len(seq.gtRect) < result.endFrame:
-                    anno = seq.gtRect[result.startFrame-seq.startFrame:
-                        result.endFrame-seq.startFrame+1]
-                else:
-                    anno = seq.gtRect[result.startFrame-1:
-                        result.endFrame]
+            if len(seq.gtRect) < result.endFrame:
+                anno = seq.gtRect[result.startFrame-seq.startFrame:
+                    result.endFrame-seq.startFrame+1]
+            else:
+                anno = seq.gtRect[result.startFrame-1:
+                    result.endFrame]
 
             print '{0} : eval {1}'.format(tracker, seq.name)
             aveCoverage, aveErrCenter, errCoverage, errCenter = \
