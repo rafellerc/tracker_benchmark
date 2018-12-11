@@ -1,4 +1,5 @@
-import urllib2
+# TODO if python 2 import urllib2 as urllib
+import urllib
 import zipfile
 import shutil
 import copy
@@ -6,22 +7,53 @@ import json
 
 from PIL import Image
 
+from scripts.butil.split_seq import split_seq_TRE
+from scripts.butil.shift_bbox import shift_init_BB
+from scripts.model.sequence import Sequence
 from config import *
-from scripts import *
-import scripts.butil
+# from scripts import *
+# import scripts.butil
 
-def get_sub_seqs(s, numSeg, evalType):
-    s.len = s.endFrame - s.startFrame + 1
-    s.s_frames = [None] * s.len
+####DEBUGGER
+import pdb
 
-    for i in range(s.len):
-        image_no = s.startFrame + i
-        _id = s.imgFormat.format(image_no)
-        s.s_frames[i] = s.path + _id
-    
-    rect_anno = s.gtRect
-    subSeqs, subAnno = scripts.butil.split_seq_TRE(s, numSeg, rect_anno)
-    s.subAnno = subAnno
+
+def get_sub_seqs(seq, numSeg, evalType):
+    """
+    Generates the subsequences to be used in the given evaluation protocol (OPE,
+    TRE or SRE). It applies all the transformations defined in each protocol,
+    that is, for the OPE it simply returns the original sequence, for the TRE it
+    generates all the subsequences with different starting frames and for the
+    SRE it generates versions of the original sequence with the initial bounding
+    box shifted in different ways.
+
+    Args:
+        seq: The Sequence object with the concerning sequence.
+        numSeg: The number of subsequences in the TRE protocol. The starting
+            frames are uniformily sampled in order to total numSeq subsequences.
+        evalType: The type of evaluation. OPE, SRE or TRE.
+ 
+    Returns:
+        subSeqs: A list with all the subsequences. Each subsequence is a
+            Sequence object, with added attributes.
+        subAnno: A corresponding list with the ground truth annotations for
+            each frame. 
+
+    """
+    # Creates new attributes for the sequence object
+    seq.len = seq.endFrame - seq.startFrame + 1
+    seq.s_frames = [None] * seq.len
+
+    for i in range(seq.len):
+        image_no = seq.startFrame + i
+        _id = seq.imgFormat.format(image_no)
+        seq.s_frames[i] = seq.path + _id
+
+    rect_anno = seq.gtRect
+    # Generate all of the temporal subsequences for the TRE (including the
+    # original sequence in subSeqs[0])
+    subSeqs, subAnno = split_seq_TRE(seq, numSeg, rect_anno)
+    seq.subAnno = subAnno
 
     if evalType == 'OPE':
         subS = subSeqs[0]
@@ -38,32 +70,54 @@ def get_sub_seqs(s, numSeg, evalType):
         subSeqs = []
         subAnno = []
         r = subS.init_rect
-        img = Image.open(s.s_frames[0])
+        img = Image.open(seq.s_frames[0])
         (imgWidth, imgHeight) = img.size
+        # Applies each one of the defined shifts
         for i in range(len(shiftTypeSet)):
-            s = copy.deepcopy(subS)
+            seq = copy.deepcopy(subS)
             shiftType = shiftTypeSet[i]
-            s.init_rect = scripts.butil.shift_init_BB(s.init_rect, shiftType, 
-                imgHeight, imgWidth)
-            s.shiftType = shiftType
-            subSeqs.append(s)
+            seq.init_rect = shift_init_BB(seq.init_rect, shiftType, 
+                                          imgHeight, imgWidth)
+            seq.shiftType = shiftType
+            subSeqs.append(seq)
             subAnno.append(subA)
     return subSeqs, subAnno
 
+
 def setup_seqs(loadSeqs):
+    """ 
+    """
     seqs = make_seq_configs(loadSeqs)
     for seq in seqs:
-        print "\t" + seq.name + "\t" + seq.path
+        print("\t" + seq.name + "\t" + seq.path)
         save_seq_config(seq)
 
+
 def save_seq_config(seq):
+    """ Saves the information of the given sequence into a configuration json
+    file (cfg.json) inside the sequence's folder in /data. It saves the Sequence
+    __dict__ that contains all of the properties and annotations.
+
+    Args:
+        seq: A Sequence object.
+    """
     string = json.dumps(seq.__dict__, indent=2)
     src = os.path.join(SEQ_SRC, seq.name)
-    configFile = open(src+'/cfg.json', 'wb')
+    configFile = open(src+'/cfg.json', 'w')
     configFile.write(string)
     configFile.close()
 
+
 def load_seq_config(seqName):
+    """ Loads the properties and initializes a new Sequence object from the
+    corresponding cfg.json file in the sequence's folder.
+    
+    Args:
+        seqName: (str) The name of the sequence. E.g. 'Basketball', 'Walking2'.
+    
+    Returns:
+        seq: (Sequence) The Sequence object corresponding to the sequence.
+    """
     src = os.path.join(SEQ_SRC, seqName)
     configFile = open(src+'/cfg.json')
     string = configFile.read()
@@ -71,6 +125,7 @@ def load_seq_config(seqName):
     seq = Sequence(**j)
     seq.path = os.path.join(os.path.abspath(seq.path), '')
     return seq
+
 
 def load_all_seq_configs():
     seqNames = get_seq_names('ALL')
@@ -80,14 +135,26 @@ def load_all_seq_configs():
         seqs.append(seq)
     return seqs
 
+
 def load_seq_configs(seqNames):
     return [load_seq_config(x) for x in seqNames]
 
+
 def get_seq_names(loadSeqs):
+    """ Returns a list containing all the sequences indicated by 'loadSeqs',
+    be that a single one or a list of sequences.
+
+    Args:
+        loadSeqs: (str or list) The sequences, or keywords informed by the user.
+            The possible keywords are: 'all', 'tb50', 'tb100', 'cvpr13'.
+    Returns:
+        A list containing all the indicated sequence names. Ex: [Basketball,
+            Biker, Bird1, ...]
+    """
     if type(loadSeqs) is list:
         return loadSeqs
     if loadSeqs.lower() == 'all':
-        names =  os.listdir(SEQ_SRC)
+        names = os.listdir(SEQ_SRC)
         names.remove(ATTR_LIST_FILE)
         names.remove(ATTR_DESC_FILE)
         names.remove(TB_50_FILE)
@@ -108,30 +175,38 @@ def get_seq_names(loadSeqs):
         names = loadSeqs
     return names
 
+
 def make_seq_configs(loadSeqs):
+    """ Checks the data/ folder to assure that all the requested sequences are
+    present. If not, it creates the folders and downloads the sequences from
+    the source in DOWNLOAD_URL (in config.py file).
+    """
     names = get_seq_names(loadSeqs)
     seqList = []
-    for name in names:  
+    for name in names:
         src = SEQ_SRC + name
         imgSrc = src + '/img/'
-        
+
         path = imgSrc
         if not os.path.exists(src):
             os.makedirs(src)
         if not os.path.exists(imgSrc):
-            print name + ' does not have img directory'
+            print(name + ' does not have img directory')
             if DOWNLOAD_SEQS:
                 download_sequence(name)
             else:
-                print 'If you want to download sequences,\n' \
-                    + 'check if config.py\'s DOWNLOAD_SEQS is True'
+                print('If you want to download sequences,\n',
+                      'check if config.py\'s DOWNLOAD_SEQS is True')
                 sys.exit(1)
 
         imgfiles = sorted(os.listdir(imgSrc))
         imgfiles = [x for x in imgfiles if x.split('.')[1] in ['jpg', 'png']]
         nz, ext, startFrame, endFrame = get_format(name, imgfiles)
-        
+
+        # Get the path to the attribute file for the current sequence
         attrSrc = os.path.join(src, ATTR_FILE)
+        # If it is not present then we create an attrs.txt file and get its content
+        # from the corresponding line in the attr_list.txt file.
         if not os.path.exists(attrSrc):
             attrlist_src = os.path.join(SEQ_SRC, ATTR_LIST_FILE)
             attrlistFile = open(attrlist_src)
@@ -144,33 +219,37 @@ def make_seq_configs(loadSeqs):
                     attrFile.write(attrs)
                     attrFile.close()
                     break
-            if attrs == None:
+            if attrs is None:
                 sys.exit(name + ' does not have attrlist')
-                
+
+        # Get the attributes for the current sequence
         attrFile = open(attrSrc)
         lines = attrFile.readline()
         attributes = [x.strip() for x in lines.split(', ')]
 
-        imgFormat = "{0}{1}{2}{3}".format("{0:0",nz,"d}.",ext)
+        imgFormat = "{0}{1}{2}{3}".format("{0:0", nz, "d}.", ext)
 
         gtFile = open(os.path.join(src, GT_FILE))
         gtLines = gtFile.readlines()
         gtRect = []
         for line in gtLines:
             if '\t' in line:
-                gtRect.append(map(int,line.strip().split('\t')))
+                gtRect.append(list(map(int, line.strip().split('\t'))))
             elif ',' in line:
-                gtRect.append(map(int,line.strip().split(',')))
+                gtRect.append(list(map(int, line.strip().split(','))))
             elif ' ' in line:
-                gtRect.append(map(int,line.strip().split(' ')))
+                gtRect.append(list(map(int, line.strip().split(' '))))
 
-        init_rect = [0,0,0,0]
+        init_rect = [0, 0, 0, 0]
         seq = Sequence(name, path, startFrame, endFrame,
-            attributes, nz, ext, imgFormat, gtRect, init_rect)
+                       attributes, nz, ext, imgFormat, gtRect, init_rect)
         seqList.append(seq)
     return seqList
 
+
 def get_format(name, imgfiles):
+    """
+    """
     filenames = imgfiles[0].split('.')
     nz = len(filenames[0])
     ext = filenames[1]
@@ -188,6 +267,7 @@ def get_format(name, imgfiles):
     elif name == "Diving":
         endFrame = 215
     return nz, ext, startFrame, endFrame
+
 
 def download_sequence(seqName):
     file_name = SEQ_SRC + seqName + '.zip'
@@ -239,23 +319,24 @@ def download_sequence(seqName):
     else:
         url = DOWNLOAD_URL.format(seqName)
         download_and_extract_file(url, file_name, SEQ_SRC)
-            
+
     if os.path.exists(SEQ_SRC + '__MACOSX'):
         shutil.rmtree(SEQ_SRC + '__MACOSX')
-        
+
 
 def download_and_extract_file(url, dst, ext_dst):  
-    print 'Connecting to {0} ...'.format(url)
+    print('Connecting to {0} ...'.format(url))
     try:
-        u = urllib2.urlopen(url)
+        # u = urllib2.urlopen(url)
+        u = url.request.urlopen(url)
     except:
-        print 'Cannot download {0} : {1}'.format(
-            url.split('/')[-1], sys.exc_info()[1])
+        print('Cannot download {0} : {1}'.format(
+            url.split('/')[-1], sys.exc_info()[1]))
         sys.exit(1)
     f = open(dst, 'wb')
     meta = u.info()
     file_size = int(meta.getheaders("Content-Length")[0])
-    print "Downloading {0} ({1} Bytes)..".format(url.split('/')[-1], file_size)
+    print("Downloading {0} ({1} Bytes)..".format(url.split('/')[-1], file_size))
     file_size_dl = 0
     block_sz = 8192
     while True:
@@ -268,12 +349,12 @@ def download_and_extract_file(url, dst, ext_dst):
         status = r"{0:d} ({1:3.2f}%)".format(
             file_size_dl, file_size_dl * 100. / file_size)
         status = status + chr(8)*(len(status)+1)
-        print status,
+        print(status)
     f.close()
 
     f = open(dst, 'rb')
     z = zipfile.ZipFile(f)
-    print '\nExtracting {0}...'.format(url.split('/')[-1])
+    print('\nExtracting {0}...'.format(url.split('/')[-1]))
     z.extractall(ext_dst)
     f.close()
     os.remove(dst)

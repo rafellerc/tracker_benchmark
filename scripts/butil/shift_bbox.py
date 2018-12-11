@@ -1,5 +1,19 @@
 
 def shift_init_BB(r, shiftType, imgH, imgW):
+    """ Shifts the initial bounding box according to the SRE protocol. This
+    function defines the amount of each type of shift.
+
+    Args:
+        r: (list) The initial bounding box containing the 4 
+            coordinates of the rectangle.
+        shiftType: (str) The type of shift to be applied, in ['scale_7',
+            'scale_8', 'scale_9', 'scale_11', 'left', 'right', etc]
+        imgH: The Height of the image in pixels.
+        imgW: The Width of the image in pixels.
+
+    Returns:
+        r: (list) The new intial shifted bounding box.
+    """
 
     center = [r[0]+r[2]/2.0, r[1]+r[3]/2.0]
 

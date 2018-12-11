@@ -1,18 +1,33 @@
 from collections import OrderedDict
-from config import *
+from config import SEQ_SRC, ATTR_DESC_FILE
 
-##########################################################
+
 class Score:
-    # name
-    # desc
-    # ovelapScores
-    # errorNum
-    # overlap
-    # error
-    # successRateList
+    """ Class that stores the information of the scores obtained by a given
+    tracker/sequence/evalType.
+
+    Attributes:
+        name: (str) The name of the sequence attribute in consideration. 'ALL'
+            stands for the mean accross all attributes. Other attributes are 
+            ['IV','OPR','SV','OCC','DEF','MB','FM','IPR','OV','BC','LR'].
+        desc: (str) The string with the description of the current attribute.
+        tracker: (str) The name of the tracker used.
+        evalType: (str) The name of the evaluation protocol used.
+        seqs: (str) A list with the sequences evaluated.
+        overlapScores: (list) A list with the overlap (IOU) scores in each 
+            sequence. The values are between 0 and 1.
+        errorNum: (float) A list with the displacement error, that is, the
+            average distance in pixels between the center of the estimated and
+            ground truth bounding boxes.
+        overlap: (float) The average overlap in percentage terms.
+        error: (float) The average displacement error.
+        successRateList: A list with the success rate (percentage of frames
+            on which the error was lower than a threshold).
+    """
 
     def __init__(self, name, desc, tracker=None, evalType=None, seqs=[],
-        overlapScores=[], errorNum=[], overlap=0, error=0, successRateList=[]):
+                 overlapScores=[], errorNum=[], overlap=0, error=0,
+                 successRateList=[]):
         self.name = name
         self.desc = desc
         self.tracker = tracker
@@ -61,6 +76,7 @@ class Score:
         return Score(name, desc)
 
 ##########################################################
+
 
 def getScoreList():
     srcAttrFile = open(SEQ_SRC + ATTR_DESC_FILE)

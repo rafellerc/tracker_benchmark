@@ -1,7 +1,9 @@
 import subprocess
 import time
 import numpy as np
+
 from config import *
+
 
 def run_CXT(seq, rp, bSaveImage):
     x = seq.init_rect[0] - 1
@@ -14,7 +16,8 @@ def run_CXT(seq, rp, bSaveImage):
     if not os.path.exists(path):
         os.makedirs(path)
 
-    command = map(str,['CXT.exe', '1', '0', '0', '1', seq.name, seq.path, path,
+    command = map(str,['/home/rafael/dev/workspace_siamfc/tracker_benchmark/trackers/CXT/CXT.exe',
+        '1', '0', '0', '1', seq.name, seq.path, path,
         seq.startFrame, seq.endFrame, seq.nz, seq.ext, x, y, w, h])
 
     tic = time.clock()

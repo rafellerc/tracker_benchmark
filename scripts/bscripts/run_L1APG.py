@@ -2,8 +2,8 @@ from config import *
 import scripts.butil
 def run_L1APG(seq, rp, bSaveImage):
     global m
-    if m == None:
-        print 'Starting matlab engine...'
+    if m is None:
+        print('Starting matlab engine...')
         m = matlab.engine.start_matlab()
     m.addpath(m.genpath('.', nargout=1), nargout=0)
     seq.init_rect = matlab.double(seq.init_rect)
